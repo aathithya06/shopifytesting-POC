@@ -1,7 +1,7 @@
 import {useLoaderData, data, type HeadersFunction} from 'react-router';
 import type {Route} from './+types/cart';
 import type {CartQueryDataReturn} from '@shopify/hydrogen';
-import {CartForm} from '@shopify/hydrogen';
+import {CartForm, useOptimisticCart} from '@shopify/hydrogen';
 import {CartMain} from '~/components/CartMain';
 
 export const meta: Route.MetaFunction = () => {
@@ -102,12 +102,14 @@ export async function loader({context}: Route.LoaderArgs) {
 }
 
 export default function Cart() {
-  const cart = useLoaderData<typeof loader>();
+  const originalCart = useLoaderData<typeof loader>();
+  const cart = useOptimisticCart(originalCart);
+  const count = cart?.totalQuantity ?? 0;
 
   return (
     <div className="cart">
-      <h1>Cart</h1>
-      <CartMain layout="page" cart={cart} />
+      <h1>Your Cart ({count})</h1>
+      <CartMain layout="page" cart={originalCart} />
     </div>
   );
 }

@@ -20,17 +20,6 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
   return (
     <div aria-labelledby={summaryId} className={className}>
-      <h4 id={summaryId}>Totals</h4>
-      <dl role="group" className="cart-subtotal">
-        <dt>Subtotal</dt>
-        <dd>
-          {cart?.cost?.subtotalAmount?.amount ? (
-            <Money data={cart?.cost?.subtotalAmount} />
-          ) : (
-            '-'
-          )}
-        </dd>
-      </dl>
       <CartDiscounts
         discountCodes={cart?.discountCodes}
         discountsHeadingId={discountsHeadingId}
@@ -41,21 +30,36 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
         giftCardHeadingId={giftCardHeadingId}
         giftCardInputId={giftCardInputId}
       />
-      <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} />
+      <div className="cart-summary-footer">
+        <dl role="group" className="cart-subtotal">
+          <dt id={summaryId}>Subtotal</dt>
+          <dd>
+            {cart?.cost?.subtotalAmount?.amount ? (
+              <Money data={cart?.cost?.subtotalAmount} />
+            ) : (
+              '-'
+            )}
+          </dd>
+        </dl>
+        <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} />
+      </div>
     </div>
   );
 }
 
 function CartCheckoutActions({checkoutUrl}: {checkoutUrl?: string}) {
-  if (!checkoutUrl) return null;
+  if (!checkoutUrl) {
+    return (
+      <span className="cart-checkout-button is-disabled" aria-disabled="true">
+        Checkout
+      </span>
+    );
+  }
 
   return (
-    <div>
-      <a href={checkoutUrl} target="_self">
-        <p>Continue to Checkout &rarr;</p>
-      </a>
-      <br />
-    </div>
+    <a className="cart-checkout-button" href={checkoutUrl} target="_self">
+      Checkout
+    </a>
   );
 }
 
@@ -97,7 +101,7 @@ function CartDiscounts({
 
       {/* Show an input to apply a discount */}
       <UpdateDiscountForm discountCodes={codes}>
-        <div>
+        <div className="cart-code-field">
           <label htmlFor={discountCodeInputId} className="sr-only">
             Discount code
           </label>
@@ -107,7 +111,6 @@ function CartDiscounts({
             name="discountCode"
             placeholder="Discount code"
           />
-          &nbsp;
           <button type="submit" aria-label="Apply discount code">
             Apply
           </button>
@@ -221,7 +224,7 @@ function CartGiftCard({
       )}
 
       <AddGiftCardForm fetcherKey="gift-card-add">
-        <div>
+        <div className="cart-code-field">
           <label htmlFor={giftCardInputId} className="sr-only">
             Gift card code
           </label>
@@ -232,7 +235,6 @@ function CartGiftCard({
             placeholder="Gift card code"
             ref={giftCardCodeInput}
           />
-          &nbsp;
           <button
             type="submit"
             disabled={giftCardAddFetcher.state !== 'idle'}

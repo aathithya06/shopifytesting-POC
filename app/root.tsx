@@ -17,6 +17,7 @@ import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
+import {fetchShippingConfig} from '~/lib/shipping-config.server';
 
 export type RootLoader = typeof loader;
 
@@ -72,12 +73,14 @@ export async function loader(args: Route.LoaderArgs) {
 
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
+  const shippingConfig = await fetchShippingConfig(args.context.env);
 
   const {storefront, env} = args.context;
 
   return {
     ...deferredData,
     ...criticalData,
+    shippingConfig,
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
     shop: getShopAnalytics({
       storefront,
@@ -135,6 +138,7 @@ function loadDeferredData({context}: Route.LoaderArgs) {
       console.error(error);
       return null;
     });
+
   return {
     cart: cart.get(),
     isLoggedIn: customerAccount.isLoggedIn(),
