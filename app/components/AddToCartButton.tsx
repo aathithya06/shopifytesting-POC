@@ -3,13 +3,17 @@ import {CartForm, type OptimisticCartLineInput} from '@shopify/hydrogen';
 
 export function AddToCartButton({
   analytics,
+  ariaLabel,
   children,
+  className,
   disabled,
   lines,
   onClick,
 }: {
   analytics?: unknown;
+  ariaLabel?: string;
   children: React.ReactNode;
+  className?: string;
   disabled?: boolean;
   lines: Array<OptimisticCartLineInput>;
   onClick?: () => void;
@@ -24,6 +28,8 @@ export function AddToCartButton({
             value={JSON.stringify(analytics)}
           />
           <button
+            aria-label={ariaLabel}
+            className={className}
             type="submit"
             onClick={onClick}
             disabled={disabled ?? fetcher.state !== 'idle'}

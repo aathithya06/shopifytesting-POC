@@ -5,3 +5,9 @@
 
 // Enhance TypeScript's built-in typings.
 import '@total-typescript/ts-reset';
+
+declare global {
+  interface Env {
+    SHOPIFY_ADMIN_ACCESS_TOKEN: string;
+  }
+}

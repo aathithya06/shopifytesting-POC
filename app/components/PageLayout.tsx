@@ -8,7 +8,7 @@ import type {
 import {Aside} from '~/components/Aside';
 import {Footer} from '~/components/Footer';
 import {Header, HeaderMenu} from '~/components/Header';
-import {CartMain} from '~/components/CartMain';
+import {CartDrawerHeading, CartMain} from '~/components/CartMain';
 import {
   SEARCH_ENDPOINT,
   SearchFormPredictive,
@@ -57,11 +57,21 @@ export function PageLayout({
 
 function CartAside({cart}: {cart: PageLayoutProps['cart']}) {
   return (
-    <Aside type="cart" heading="CART">
+    <Aside
+      type="cart"
+      className="cart-aside"
+      heading={
+        <Suspense fallback="Your Cart">
+          <Await resolve={cart}>
+            {(resolvedCart) => <CartDrawerHeading cart={resolvedCart} />}
+          </Await>
+        </Suspense>
+      }
+    >
       <Suspense fallback={<p>Loading cart ...</p>}>
         <Await resolve={cart}>
-          {(cart) => {
-            return <CartMain cart={cart} layout="aside" />;
+          {(resolvedCart) => {
+            return <CartMain cart={resolvedCart} layout="aside" />;
           }}
         </Await>
       </Suspense>

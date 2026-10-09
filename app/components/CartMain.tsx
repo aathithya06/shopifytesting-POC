@@ -3,6 +3,8 @@ import {Link} from 'react-router';
 import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
 import {CartLineItem, type CartLine} from '~/components/CartLineItem';
+import {CartRecommendations} from '~/components/CartRecommendations';
+import {FreeShippingBar} from '~/components/FreeShippingBar';
 import {CartSummary} from './CartSummary';
 
 export type CartLayout = 'page' | 'aside';
@@ -32,6 +34,17 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
   }
   return children;
 }
+/** Drawer title, including the optimistic item count. */
+export function CartDrawerHeading({
+  cart,
+}: {
+  cart: CartApiQueryFragment | null;
+}) {
+  const optimisticCart = useOptimisticCart(cart);
+  const count = optimisticCart?.totalQuantity ?? 0;
+  return <>Your Cart ({count})</>;
+}
+
 /**
  * The main cart component that displays the cart items and summary.
  * It is used by both the /cart route and the cart aside dialog.
@@ -41,68 +54,67 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   // so the user immediately sees feedback when they modify the cart.
   const cart = useOptimisticCart(originalCart);
 
-  const linesCount = Boolean(cart?.lines?.nodes?.length || 0);
-  const withDiscount =
-    cart &&
-    Boolean(cart?.discountCodes?.filter((code) => code.applicable)?.length);
-  const className = `cart-main ${withDiscount ? 'with-discount' : ''}`;
   const cartHasItems = cart?.totalQuantity ? cart.totalQuantity > 0 : false;
   const childrenMap = getLineItemChildrenMap(cart?.lines?.nodes ?? []);
 
   return (
     <section
-      className={className}
+      className={`cart-main cart-main-${layout}`}
       aria-label={layout === 'page' ? 'Cart page' : 'Cart drawer'}
     >
-      <CartEmpty hidden={linesCount} layout={layout} />
-      <div className="cart-details">
-        <p id="cart-lines" className="sr-only">
-          Line items
-        </p>
-        <div>
-          <ul aria-labelledby="cart-lines">
-            {(cart?.lines?.nodes ?? []).map((line) => {
-              // we do not render non-parent lines at the root of the cart
-              if (
-                'parentRelationship' in line &&
-                line.parentRelationship?.parent
-              ) {
-                return null;
-              }
-              return (
-                <CartLineItem
-                  key={line.id}
-                  line={line}
-                  layout={layout}
-                  childrenMap={childrenMap}
-                />
-              );
-            })}
-          </ul>
+      {cartHasItems ? (
+        <div className="cart-details">
+          <p id="cart-lines" className="sr-only">
+            Line items
+          </p>
+          <div className="cart-lines">
+            <FreeShippingBar cart={cart} />
+            <ul aria-labelledby="cart-lines">
+              {(cart?.lines?.nodes ?? []).map((line) => {
+                // we do not render non-parent lines at the root of the cart
+                if (
+                  'parentRelationship' in line &&
+                  line.parentRelationship?.parent
+                ) {
+                  return null;
+                }
+                return (
+                  <CartLineItem
+                    key={line.id}
+                    line={line}
+                    layout={layout}
+                    childrenMap={childrenMap}
+                  />
+                );
+              })}
+            </ul>
+            {layout === 'aside' ? (
+              <CartRecommendations lines={cart?.lines?.nodes ?? []} />
+            ) : null}
+          </div>
+          <CartSummary cart={cart} layout={layout} />
         </div>
-        {cartHasItems && <CartSummary cart={cart} layout={layout} />}
-      </div>
+      ) : (
+        <CartEmpty layout={layout} />
+      )}
     </section>
   );
 }
 
-function CartEmpty({
-  hidden = false,
-}: {
-  hidden: boolean;
-  layout?: CartMainProps['layout'];
-}) {
+function CartEmpty({layout}: {layout?: CartMainProps['layout']}) {
   const {close} = useAside();
   return (
-    <div hidden={hidden}>
-      <br />
-      <p>
-        Looks like you haven&rsquo;t added anything yet, let&rsquo;s get you
-        started!
-      </p>
-      <br />
-      <Link to="/collections" onClick={close} prefetch="viewport">
-        Continue shopping →
+    <div className="cart-empty">
+      <p>Your cart is empty</p>
+      <Link
+        className="cart-empty-cta"
+        to="/collections"
+        onClick={() => {
+          if (layout === 'aside') close();
+        }}
+        prefetch="viewport"
+      >
+        Continue shopping
       </Link>
     </div>
   );
