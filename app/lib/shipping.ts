@@ -17,6 +17,11 @@ type CartForShipping = {
       currencyCode?: string | null;
     } | null;
   } | null;
+  discountAllocations?: ReadonlyArray<{
+    discountedAmount?: {
+      amount?: string | null;
+    } | null;
+  }> | null;
 } | null;
 
 export type ShippingProgress =
@@ -47,14 +52,24 @@ export function getShippingProgress(
   const subtotal = Number.parseFloat(amount);
   if (Number.isNaN(subtotal) || subtotal < 0) return {isValid: false};
 
+  const cartDiscounts = cart?.discountAllocations ?? [];
+  const cartDiscountTotal = cartDiscounts.reduce((sum, allocation) => {
+    const discountAmount = allocation?.discountedAmount?.amount;
+    if (discountAmount == null || discountAmount === '') return sum;
+    const value = Number.parseFloat(discountAmount);
+    return Number.isFinite(value) ? sum + value : sum;
+  }, 0);
+
+  const adjustedSubtotal = Math.max(subtotal - cartDiscountTotal, 0);
+
   const threshold = config.threshold;
-  const remaining = Math.max(threshold - subtotal, 0);
-  const ratio = threshold === 0 ? (subtotal > 0 ? 100 : 0) : (subtotal / threshold) * 100;
+  const remaining = Math.max(threshold - adjustedSubtotal, 0);
+  const ratio = threshold === 0 ? (adjustedSubtotal > 0 ? 100 : 0) : (adjustedSubtotal / threshold) * 100;
   const percent = Math.min(100, Math.max(0, Number.isFinite(ratio) ? ratio : 0));
 
   return {
     isValid: true,
-    subtotal,
+    subtotal: adjustedSubtotal,
     currency,
     threshold,
     remaining,
