@@ -1,6 +1,6 @@
 import type {CartLineUpdateInput} from '@shopify/hydrogen/storefront-api-types';
 import type {CartLayout, LineItemChildrenMap} from '~/components/CartMain';
-import {CartForm, Image, Money, type OptimisticCartLine} from '@shopify/hydrogen';
+import {CartForm, Image, Money, useOptimisticCart} from '@shopify/hydrogen';
 import {useVariantUrl} from '~/lib/variants';
 import {Link} from 'react-router';
 import {ProductPrice} from './ProductPrice';
@@ -11,7 +11,9 @@ import type {
   CartLineFragment,
 } from 'storefrontapi.generated';
 
-export type CartLine = OptimisticCartLine<CartApiQueryFragment>;
+export type CartLine = NonNullable<
+  NonNullable<ReturnType<typeof useOptimisticCart<CartApiQueryFragment | null>>>['lines']
+>['nodes'][number];
 
 function formatDiscountAmount(amount: number, currencyCode: string) {
   return new Intl.NumberFormat('en-US', {

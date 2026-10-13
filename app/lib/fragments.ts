@@ -152,6 +152,9 @@ export const CART_QUERY_FRAGMENT = `#graphql
       amountUsed {
         ...Money
       }
+      balance {
+        ...Money
+      }
     }
     checkoutUrl
     totalQuantity
