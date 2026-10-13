@@ -28,10 +28,12 @@ export function Aside({
   children,
   heading,
   type,
+  className,
 }: {
   children?: React.ReactNode;
   type: AsideType;
   heading: React.ReactNode;
+  className?: string;
 }) {
   const {type: activeType, close} = useAside();
   const expanded = type === activeType;
@@ -61,7 +63,7 @@ export function Aside({
       aria-labelledby={id}
     >
       <button className="close-outside" onClick={close} />
-      <aside>
+      <aside className={className}>
         <header>
           <h3 id={id}>{heading}</h3>
           <button className="close reset" onClick={close} aria-label="Close">

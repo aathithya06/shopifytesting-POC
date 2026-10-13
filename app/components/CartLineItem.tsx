@@ -1,16 +1,26 @@
 import type {CartLineUpdateInput} from '@shopify/hydrogen/storefront-api-types';
 import type {CartLayout, LineItemChildrenMap} from '~/components/CartMain';
-import {CartForm, Image, type OptimisticCartLine} from '@shopify/hydrogen';
+import {CartForm, Image, Money, useOptimisticCart} from '@shopify/hydrogen';
 import {useVariantUrl} from '~/lib/variants';
 import {Link} from 'react-router';
 import {ProductPrice} from './ProductPrice';
 import {useAside} from './Aside';
+import {getLineDiscounts} from '~/lib/discounts';
 import type {
   CartApiQueryFragment,
   CartLineFragment,
 } from 'storefrontapi.generated';
 
-export type CartLine = OptimisticCartLine<CartApiQueryFragment>;
+export type CartLine = NonNullable<
+  NonNullable<ReturnType<typeof useOptimisticCart<CartApiQueryFragment | null>>>['lines']
+>['nodes'][number];
+
+function formatDiscountAmount(amount: number, currencyCode: string) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(amount);
+}
 
 /**
  * A single line item in the cart. It displays the product image, title, price.
@@ -28,50 +38,92 @@ export function CartLineItem({
   childrenMap: LineItemChildrenMap;
 }) {
   const {id, merchandise} = line;
-  const {product, title, image, selectedOptions} = merchandise;
+  const {product, image, selectedOptions} = merchandise;
   const lineItemUrl = useVariantUrl(product.handle, selectedOptions);
   const {close} = useAside();
   const lineItemChildren = childrenMap[id];
   const childrenLabelId = `cart-line-children-${id}`;
+  const visibleOptions = selectedOptions.filter(
+    (option) => option.value !== 'Default Title',
+  );
+  const lineDiscounts = getLineDiscounts(line);
+  const hasLineDiscounts = lineDiscounts.length > 0;
+  const lineCurrency = line.cost?.totalAmount?.currencyCode ?? 'USD';
+
+  const closeAside = () => {
+    if (layout === 'aside') close();
+  };
 
   return (
     <li key={id} className="cart-line">
       <div className="cart-line-inner">
-        {image && (
-          <Image
-            alt={title}
-            aspectRatio="1/1"
-            data={image}
-            height={100}
-            loading="lazy"
-            width={100}
-          />
-        )}
+        <Link
+          className="cart-line-media"
+          prefetch="intent"
+          to={lineItemUrl}
+          onClick={closeAside}
+        >
+          {image ? (
+            <Image
+              alt={product.title}
+              aspectRatio="3/4"
+              data={image}
+              height={128}
+              loading="lazy"
+              width={96}
+            />
+          ) : (
+            <span className="cart-line-media-fallback" aria-hidden="true" />
+          )}
+        </Link>
 
-        <div>
-          <Link
-            prefetch="intent"
-            to={lineItemUrl}
-            onClick={() => {
-              if (layout === 'aside') {
-                close();
-              }
-            }}
-          >
-            <p>
-              <strong>{product.title}</strong>
-            </p>
-          </Link>
-          <ProductPrice price={line?.cost?.totalAmount} />
-          <ul>
-            {selectedOptions.map((option) => (
-              <li key={option.name}>
-                <small>
+        <div className="cart-line-info">
+          <div className="cart-line-top">
+            <Link
+              className="cart-line-title"
+              prefetch="intent"
+              to={lineItemUrl}
+              onClick={closeAside}
+            >
+              {product.title}
+            </Link>
+            <div className="cart-line-price">
+              {hasLineDiscounts ? (
+                <div className="cart-line-prices">
+                  <span className="cart-line-price-original">
+                    <Money data={line.cost.subtotalAmount} />
+                  </span>
+                  <span className="cart-line-price-discounted">
+                    <Money data={line.cost.totalAmount} />
+                  </span>
+                </div>
+              ) : (
+                <ProductPrice price={line?.cost?.totalAmount} />
+              )}
+            </div>
+          </div>
+          {hasLineDiscounts ? (
+            <div className="disc-line-chips">
+              {lineDiscounts.map((discount, index) => (
+                <span
+                  key={`${discount.label}-${index}`}
+                  className="disc-chip disc-chip--line"
+                >
+                  {discount.label} (-
+                  {formatDiscountAmount(discount.amount, lineCurrency)})
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {visibleOptions.length > 0 ? (
+            <ul className="cart-line-options">
+              {visibleOptions.map((option) => (
+                <li key={option.name}>
                   {option.name}: {option.value}
-                </small>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <CartLineQuantity line={line} />
         </div>
       </div>
@@ -110,29 +162,33 @@ function CartLineQuantity({line}: {line: CartLine}) {
 
   return (
     <div className="cart-line-quantity">
-      <small>Quantity: {quantity} &nbsp;&nbsp;</small>
-      <CartLineUpdateButton lines={[{id: lineId, quantity: prevQuantity}]}>
-        <button
-          aria-label="Decrease quantity"
-          disabled={quantity <= 1 || !!isOptimistic}
-          name="decrease-quantity"
-          value={prevQuantity}
-        >
-          <span>&#8722; </span>
-        </button>
-      </CartLineUpdateButton>
-      &nbsp;
-      <CartLineUpdateButton lines={[{id: lineId, quantity: nextQuantity}]}>
-        <button
-          aria-label="Increase quantity"
-          name="increase-quantity"
-          value={nextQuantity}
-          disabled={!!isOptimistic}
-        >
-          <span>&#43;</span>
-        </button>
-      </CartLineUpdateButton>
-      &nbsp;
+      <div className="cart-qty">
+        <CartLineUpdateButton lines={[{id: lineId, quantity: prevQuantity}]}>
+          <button
+            aria-label="Decrease quantity"
+            className="cart-qty-btn"
+            disabled={quantity <= 1 || !!isOptimistic}
+            name="decrease-quantity"
+            type="submit"
+            value={prevQuantity}
+          >
+            <span>&#8722;</span>
+          </button>
+        </CartLineUpdateButton>
+        <span className="cart-qty-count">{quantity}</span>
+        <CartLineUpdateButton lines={[{id: lineId, quantity: nextQuantity}]}>
+          <button
+            aria-label="Increase quantity"
+            className="cart-qty-btn"
+            name="increase-quantity"
+            type="submit"
+            value={nextQuantity}
+            disabled={!!isOptimistic}
+          >
+            <span>&#43;</span>
+          </button>
+        </CartLineUpdateButton>
+      </div>
       <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} />
     </div>
   );
@@ -157,7 +213,7 @@ function CartLineRemoveButton({
       action={CartForm.ACTIONS.LinesRemove}
       inputs={{lineIds}}
     >
-      <button disabled={disabled} type="submit">
+      <button className="cart-line-remove" disabled={disabled} type="submit">
         Remove
       </button>
     </CartForm>
