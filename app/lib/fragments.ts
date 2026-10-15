@@ -12,6 +12,9 @@ export const CART_QUERY_FRAGMENT = `#graphql
       value
     }
     cost {
+      subtotalAmount {
+        ...Money
+      }
       totalAmount {
         ...Money
       }
@@ -20,6 +23,18 @@ export const CART_QUERY_FRAGMENT = `#graphql
       }
       compareAtAmountPerQuantity {
         ...Money
+      }
+    }
+    discountAllocations {
+      discountedAmount {
+        ...Money
+      }
+      __typename
+      ... on CartAutomaticDiscountAllocation {
+        title
+      }
+      ... on CartCodeDiscountAllocation {
+        code
       }
     }
     merchandise {
@@ -68,6 +83,9 @@ export const CART_QUERY_FRAGMENT = `#graphql
       value
     }
     cost {
+      subtotalAmount {
+        ...Money
+      }
       totalAmount {
         ...Money
       }
@@ -76,6 +94,18 @@ export const CART_QUERY_FRAGMENT = `#graphql
       }
       compareAtAmountPerQuantity {
         ...Money
+      }
+    }
+    discountAllocations {
+      discountedAmount {
+        ...Money
+      }
+      __typename
+      ... on CartAutomaticDiscountAllocation {
+        title
+      }
+      ... on CartCodeDiscountAllocation {
+        code
       }
     }
     merchandise {
@@ -120,6 +150,9 @@ export const CART_QUERY_FRAGMENT = `#graphql
       id
       lastCharacters
       amountUsed {
+        ...Money
+      }
+      balance {
         ...Money
       }
     }
@@ -167,6 +200,18 @@ export const CART_QUERY_FRAGMENT = `#graphql
     discountCodes {
       code
       applicable
+    }
+    discountAllocations {
+      discountedAmount {
+        ...Money
+      }
+      __typename
+      ... on CartAutomaticDiscountAllocation {
+        title
+      }
+      ... on CartCodeDiscountAllocation {
+        code
+      }
     }
   }
 ` as const;

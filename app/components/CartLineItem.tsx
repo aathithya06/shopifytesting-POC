@@ -1,16 +1,27 @@
 import type {CartLineUpdateInput} from '@shopify/hydrogen/storefront-api-types';
 import type {CartLayout, LineItemChildrenMap} from '~/components/CartMain';
-import {CartForm, Image, type OptimisticCartLine} from '@shopify/hydrogen';
+import {CartForm, Image, Money, useOptimisticCart} from '@shopify/hydrogen';
 import {useVariantUrl} from '~/lib/variants';
 import {Link} from 'react-router';
 import {ProductPrice} from './ProductPrice';
 import {useAside} from './Aside';
+import {getLineDiscounts} from '~/lib/discounts';
 import type {
   CartApiQueryFragment,
   CartLineFragment,
 } from 'storefrontapi.generated';
+import {isPreorderCartLine, getPreorderShipDateFromAttributes} from '~/lib/preorder';
 
-export type CartLine = OptimisticCartLine<CartApiQueryFragment>;
+export type CartLine = NonNullable<
+  NonNullable<ReturnType<typeof useOptimisticCart<CartApiQueryFragment | null>>>['lines']
+>['nodes'][number];
+
+function formatDiscountAmount(amount: number, currencyCode: string) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(amount);
+}
 
 /**
  * A single line item in the cart. It displays the product image, title, price.
@@ -36,6 +47,13 @@ export function CartLineItem({
   const visibleOptions = selectedOptions.filter(
     (option) => option.value !== 'Default Title',
   );
+  const lineDiscounts = getLineDiscounts(line);
+  const hasLineDiscounts = lineDiscounts.length > 0;
+  const lineCurrency = line.cost?.totalAmount?.currencyCode ?? 'USD';
+  const isPreorder = isPreorderCartLine(line);
+  const preorderShipDate = isPreorder
+    ? getPreorderShipDateFromAttributes(line.attributes)
+    : '';
 
   const closeAside = () => {
     if (layout === 'aside') close();
@@ -75,9 +93,41 @@ export function CartLineItem({
               {product.title}
             </Link>
             <div className="cart-line-price">
-              <ProductPrice price={line?.cost?.totalAmount} />
+              {hasLineDiscounts ? (
+                <div className="cart-line-prices">
+                  <span className="cart-line-price-original">
+                    <Money data={line.cost.subtotalAmount} />
+                  </span>
+                  <span className="cart-line-price-discounted">
+                    <Money data={line.cost.totalAmount} />
+                  </span>
+                </div>
+              ) : (
+                <ProductPrice price={line?.cost?.totalAmount} />
+              )}
             </div>
           </div>
+          {isPreorder ? (
+            <div className="preorder-line-tag" role="status">
+              <span className="preorder-badge-dot" aria-hidden="true" />
+              {preorderShipDate
+                ? `Pre-order · Ships ${preorderShipDate}`
+                : 'Pre-order'}
+            </div>
+          ) : null}
+          {hasLineDiscounts ? (
+            <div className="disc-line-chips">
+              {lineDiscounts.map((discount, index) => (
+                <span
+                  key={`${discount.label}-${index}`}
+                  className="disc-chip disc-chip--line"
+                >
+                  {discount.label} (-
+                  {formatDiscountAmount(discount.amount, lineCurrency)})
+                </span>
+              ))}
+            </div>
+          ) : null}
           {visibleOptions.length > 0 ? (
             <ul className="cart-line-options">
               {visibleOptions.map((option) => (

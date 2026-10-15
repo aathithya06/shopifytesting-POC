@@ -3,14 +3,21 @@ import {useEffect, useMemo, useRef} from 'react';
 import {useFetcher, useParams} from 'react-router';
 import {useAside} from '~/components/Aside';
 import {AddToCartButton} from '~/components/AddToCartButton';
+import type {CartLayout} from '~/components/CartMain';
 import type {CartLine} from '~/components/CartLineItem';
 import type {CartRecommendationsResult} from '~/routes/($locale).api.recommendations';
 
 /**
- * Loads productRecommendations for the cart's products when the drawer opens.
+ * Loads productRecommendations for the cart's products when the drawer opens or on the cart page.
  * Products already in the cart are left out. Each card can be added in one click.
  */
-export function CartRecommendations({lines}: {lines: CartLine[]}) {
+export function CartRecommendations({
+  lines,
+  layout,
+}: {
+  lines: CartLine[];
+  layout?: CartLayout;
+}) {
   const {type} = useAside();
   const {locale} = useParams();
   const fetcher = useFetcher<CartRecommendationsResult>();
@@ -18,8 +25,10 @@ export function CartRecommendations({lines}: {lines: CartLine[]}) {
   const productIdsKey = productIds.join(',');
   const loadedForOpen = useRef(false);
 
+  const isVisible = layout === 'page' || type === 'cart';
+
   useEffect(() => {
-    if (type !== 'cart') {
+    if (!isVisible) {
       loadedForOpen.current = false;
       return;
     }
@@ -32,7 +41,7 @@ export function CartRecommendations({lines}: {lines: CartLine[]}) {
     );
     // fetcher.load is stable enough; the fetcher object itself changes every state update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, productIdsKey, locale]);
+  }, [isVisible, productIdsKey, locale]);
 
   const inCart = useMemo(() => new Set(productIds), [productIds]);
   const products = (fetcher.data?.products ?? []).filter(

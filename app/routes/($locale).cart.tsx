@@ -1,21 +1,21 @@
-import {useLoaderData, data, type HeadersFunction} from 'react-router';
-import type {Route} from './+types/cart';
-import type {CartQueryDataReturn} from '@shopify/hydrogen';
-import {CartForm, useOptimisticCart} from '@shopify/hydrogen';
-import {CartMain} from '~/components/CartMain';
+import { useLoaderData, data, type HeadersFunction } from 'react-router';
+import type { Route } from './+types/($locale).cart';
+import type { CartQueryDataReturn } from '@shopify/hydrogen';
+import { CartForm, useOptimisticCart } from '@shopify/hydrogen';
+import { CartMain } from '~/components/CartMain';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: `Hydrogen | Cart`}];
+  return [{ title: `Hydrogen | Cart` }];
 };
 
-export const headers: HeadersFunction = ({actionHeaders}) => actionHeaders;
+export const headers: HeadersFunction = ({ actionHeaders }) => actionHeaders;
 
-export async function action({request, context}: Route.ActionArgs) {
-  const {cart} = context;
+export async function action({ request, context }: Route.ActionArgs) {
+  const { cart } = context;
 
   const formData = await request.formData();
 
-  const {action, inputs} = CartForm.getFormInput(formData);
+  const { action, inputs } = CartForm.getFormInput(formData);
 
   if (!action) {
     throw new Error('No action provided');
@@ -48,6 +48,21 @@ export async function action({request, context}: Route.ActionArgs) {
       result = await cart.updateDiscountCodes(discountCodes);
       break;
     }
+    case CartForm.ACTIONS.GiftCardCodesUpdate: {
+      const formGiftCardCode = inputs.giftCardCode;
+      const giftCardCodes = (
+        formGiftCardCode
+          ? [formGiftCardCode]
+          : Array.isArray(inputs.giftCardCodes)
+            ? inputs.giftCardCodes
+            : inputs.giftCardCodes
+              ? [inputs.giftCardCodes]
+              : []
+      ) as string[];
+
+      result = await cart.updateGiftCardCodes(giftCardCodes);
+      break;
+    }
     case CartForm.ACTIONS.GiftCardCodesAdd: {
       const formGiftCardCode = inputs.giftCardCode;
 
@@ -59,8 +74,27 @@ export async function action({request, context}: Route.ActionArgs) {
       break;
     }
     case CartForm.ACTIONS.GiftCardCodesRemove: {
-      const appliedGiftCardIds = inputs.giftCardCodes as string[];
+      const appliedGiftCardIds = (
+        Array.isArray(inputs.giftCardCodes)
+          ? inputs.giftCardCodes
+          : inputs.giftCardCodes
+            ? [inputs.giftCardCodes]
+            : []
+      ) as string[];
       result = await cart.removeGiftCardCodes(appliedGiftCardIds);
+      break;
+    }
+    case CartForm.ACTIONS.NoteUpdate: {
+      const note = (inputs.note as string) ?? '';
+      result = await cart.updateNote(note);
+      break;
+    }
+    case CartForm.ACTIONS.AttributesUpdateInput: {
+      const attributes = (inputs.attributes as Array<{
+        key: string;
+        value: string;
+      }>) ?? [];
+      result = await cart.updateAttributes(attributes);
       break;
     }
     case CartForm.ACTIONS.BuyerIdentityUpdate: {
@@ -75,7 +109,7 @@ export async function action({request, context}: Route.ActionArgs) {
 
   const cartId = result?.cart?.id;
   const headers = cartId ? cart.setCartId(result.cart.id) : new Headers();
-  const {cart: cartResult, errors, warnings} = result;
+  const { cart: cartResult, errors, warnings } = result;
 
   const redirectTo = formData.get('redirectTo') ?? null;
   if (typeof redirectTo === 'string') {
@@ -92,12 +126,12 @@ export async function action({request, context}: Route.ActionArgs) {
         cartId,
       },
     },
-    {status, headers},
+    { status, headers },
   );
 }
 
-export async function loader({context}: Route.LoaderArgs) {
-  const {cart} = context;
+export async function loader({ context }: Route.LoaderArgs) {
+  const { cart } = context;
   return await cart.get();
 }
 
@@ -109,7 +143,7 @@ export default function Cart() {
   return (
     <div className="cart">
       <h1>Your Cart ({count})</h1>
-      <CartMain layout="page" cart={originalCart} />
+      <CartMain layout="page" cart={originalCart ?? null} />
     </div>
   );
 }
