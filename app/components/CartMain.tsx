@@ -7,6 +7,7 @@ import { CartRecommendations } from '~/components/CartRecommendations';
 import { FreeShippingBar } from '~/components/FreeShippingBar';
 import { GiftCardAddOn } from '~/components/GiftCardAddOn';
 import { CartSummary } from './CartSummary';
+import { isPreorderCartLine } from '~/lib/preorder';
 
 export type CartLayout = 'page' | 'aside';
 
@@ -89,6 +90,24 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                 );
               })}
             </ul>
+            {(() => {
+              const lines = cart?.lines?.nodes ?? [];
+              const hasPreorder = lines.some(isPreorderCartLine);
+              const hasInStock = lines.some((line) => !isPreorderCartLine(line));
+              if (hasPreorder && hasInStock) {
+                return (
+                  <div className="preorder-split-note" role="note">
+                    <span className="preorder-split-icon" aria-hidden="true">
+                      📦
+                    </span>
+                    <span>
+                      Your order contains pre-order items and may ship in parts.
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             <CartRecommendations
               lines={cart?.lines?.nodes ?? []}
               layout={layout}

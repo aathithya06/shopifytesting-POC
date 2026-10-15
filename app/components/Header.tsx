@@ -1,5 +1,5 @@
-import {Suspense} from 'react';
-import {Await, NavLink, useAsyncValue} from 'react-router';
+import {Suspense, useState, useRef, useEffect} from 'react';
+import {Await, Form, NavLink, useAsyncValue, useLocation} from 'react-router';
 import {
   type CartViewPayload,
   useAnalytics,
@@ -99,21 +99,132 @@ function HeaderCtas({
   isLoggedIn,
   cart,
 }: Pick<HeaderProps, 'isLoggedIn' | 'cart'>) {
+  const location = useLocation();
+  const currentPath = location.pathname + location.search;
+  const authUrl = currentPath.startsWith('/auth')
+    ? '/auth'
+    : `/auth?redirect=${encodeURIComponent(currentPath)}`;
+
   return (
     <nav className="header-ctas" role="navigation">
       <HeaderMenuMobileToggle />
-      <NavLink prefetch="intent" to="/account" style={activeLinkStyle}>
-        <Suspense fallback="Sign in">
-          <Await resolve={isLoggedIn} errorElement="Sign in">
-            {(isLoggedIn) => (isLoggedIn ? 'Account' : 'Sign in')}
-          </Await>
-        </Suspense>
-      </NavLink>
+      <Suspense
+        fallback={
+          <NavLink prefetch="intent" to={authUrl} style={activeLinkStyle}>
+            Sign in
+          </NavLink>
+        }
+      >
+        <Await
+          resolve={Promise.all([isLoggedIn, cart])}
+          errorElement={
+            <NavLink prefetch="intent" to={authUrl} style={activeLinkStyle}>
+              Sign in
+            </NavLink>
+          }
+        >
+          {([resolvedLoggedIn, resolvedCart]) => {
+            if (!resolvedLoggedIn) {
+              return (
+                <NavLink prefetch="intent" to={authUrl} style={activeLinkStyle}>
+                  Sign in
+                </NavLink>
+              );
+            }
+            const firstName = resolvedCart?.buyerIdentity?.customer?.firstName;
+            const greeting = firstName ? `Hi, ${firstName}` : 'Account';
+            return <AccountDropdown greeting={greeting} />;
+          }}
+        </Await>
+      </Suspense>
       <SearchToggle />
       <CartToggle cart={cart} />
     </nav>
   );
 }
+
+function AccountDropdown({greeting}: {greeting: string}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="account-dropdown" ref={dropdownRef}>
+      <button
+        type="button"
+        className="account-dropdown-toggle reset"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
+        <span>{greeting}</span>
+        <span className="account-dropdown-chevron" aria-hidden="true">
+          ▾
+        </span>
+      </button>
+      {isOpen && (
+        <div className="account-dropdown-menu" role="menu">
+          <NavLink
+            to="/account"
+            className="account-dropdown-item"
+            role="menuitem"
+            onClick={() => setIsOpen(false)}
+          >
+            Account
+          </NavLink>
+          <NavLink
+            to="/account/orders"
+            className="account-dropdown-item"
+            role="menuitem"
+            onClick={() => setIsOpen(false)}
+          >
+            Orders
+          </NavLink>
+          <Form
+            method="POST"
+            action="/account/logout"
+            className="account-dropdown-logout-form"
+          >
+            <button
+              type="submit"
+              className="account-dropdown-item account-dropdown-logout-btn reset"
+              role="menuitem"
+            >
+              Sign out
+            </button>
+          </Form>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function HeaderMenuMobileToggle() {
   const {open} = useAside();

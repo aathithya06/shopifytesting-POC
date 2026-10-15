@@ -9,5 +9,6 @@ import '@total-typescript/ts-reset';
 declare global {
   interface Env {
     SHOPIFY_ADMIN_ACCESS_TOKEN: string;
+    PUBLIC_KLAVIYO_COMPANY_ID: string;
   }
 }

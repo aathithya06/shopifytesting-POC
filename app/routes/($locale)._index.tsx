@@ -1,5 +1,5 @@
 import {Await, useLoaderData, Link} from 'react-router';
-import type {Route} from './+types/_index';
+import type {Route} from './+types/($locale)._index';
 import {Suspense} from 'react';
 import {Image} from '@shopify/hydrogen';
 import type {
