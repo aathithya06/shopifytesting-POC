@@ -10,6 +10,7 @@ import type {
   CartApiQueryFragment,
   CartLineFragment,
 } from 'storefrontapi.generated';
+import {isPreorderCartLine, getPreorderShipDateFromAttributes} from '~/lib/preorder';
 
 export type CartLine = NonNullable<
   NonNullable<ReturnType<typeof useOptimisticCart<CartApiQueryFragment | null>>>['lines']
@@ -49,6 +50,10 @@ export function CartLineItem({
   const lineDiscounts = getLineDiscounts(line);
   const hasLineDiscounts = lineDiscounts.length > 0;
   const lineCurrency = line.cost?.totalAmount?.currencyCode ?? 'USD';
+  const isPreorder = isPreorderCartLine(line);
+  const preorderShipDate = isPreorder
+    ? getPreorderShipDateFromAttributes(line.attributes)
+    : '';
 
   const closeAside = () => {
     if (layout === 'aside') close();
@@ -102,6 +107,14 @@ export function CartLineItem({
               )}
             </div>
           </div>
+          {isPreorder ? (
+            <div className="preorder-line-tag" role="status">
+              <span className="preorder-badge-dot" aria-hidden="true" />
+              {preorderShipDate
+                ? `Pre-order · Ships ${preorderShipDate}`
+                : 'Pre-order'}
+            </div>
+          ) : null}
           {hasLineDiscounts ? (
             <div className="disc-line-chips">
               {lineDiscounts.map((discount, index) => (

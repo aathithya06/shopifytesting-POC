@@ -1,5 +1,5 @@
 import {redirect, useLoaderData} from 'react-router';
-import type {Route} from './+types/products.$handle';
+import type {Route} from './+types/($locale).products.$handle';
 import {
   getSelectedProductOptions,
   Analytics,
@@ -12,6 +12,7 @@ import {ProductPrice} from '~/components/ProductPrice';
 import {ProductImage} from '~/components/ProductImage';
 import {ProductForm} from '~/components/ProductForm';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
+import {isVariantPreorder} from '~/lib/preorder';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [
@@ -96,20 +97,34 @@ export default function Product() {
   });
 
   const {title, descriptionHtml} = product;
+  const isPreorder = isVariantPreorder({
+    variant: selectedVariant,
+    preorderMetafieldValue: product.preorder?.value,
+  });
 
   return (
     <div className="product">
       <ProductImage image={selectedVariant?.image} />
       <div className="product-main">
         <h1>{title}</h1>
-        <ProductPrice
-          price={selectedVariant?.price}
-          compareAtPrice={selectedVariant?.compareAtPrice}
-        />
+        <div className="product-price-wrapper">
+          <ProductPrice
+            price={selectedVariant?.price}
+            compareAtPrice={selectedVariant?.compareAtPrice}
+          />
+          {isPreorder && (
+            <span className="preorder-badge" role="status">
+              <span className="preorder-badge-dot" aria-hidden="true" />
+              Pre-order
+            </span>
+          )}
+        </div>
         <br />
         <ProductForm
           productOptions={productOptions}
           selectedVariant={selectedVariant}
+          preorder={product.preorder}
+          preorderShipDate={product.preorderShipDate}
         />
         <br />
         <br />
@@ -142,6 +157,7 @@ export default function Product() {
 const PRODUCT_VARIANT_FRAGMENT = `#graphql
   fragment ProductVariant on ProductVariant {
     availableForSale
+    currentlyNotInStock
     compareAtPrice {
       amount
       currencyCode
@@ -186,6 +202,12 @@ const PRODUCT_FRAGMENT = `#graphql
     description
     encodedVariantExistence
     encodedVariantAvailability
+    preorder: metafield(namespace: "custom", key: "preorder") {
+      value
+    }
+    preorderShipDate: metafield(namespace: "custom", key: "preorder_ship_date") {
+      value
+    }
     options {
       name
       optionValues {

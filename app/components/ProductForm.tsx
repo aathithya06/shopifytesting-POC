@@ -5,18 +5,33 @@ import type {
   ProductOptionValueSwatch,
 } from '@shopify/hydrogen/storefront-api-types';
 import {AddToCartButton} from './AddToCartButton';
+import {BackInStockForm} from './BackInStockForm';
 import {useAside} from './Aside';
 import type {ProductFragment} from 'storefrontapi.generated';
+import {isVariantPreorder, formatPreorderDate} from '~/lib/preorder';
 
 export function ProductForm({
   productOptions,
   selectedVariant,
+  preorder,
+  preorderShipDate,
 }: {
   productOptions: MappedProductOptions[];
   selectedVariant: ProductFragment['selectedOrFirstAvailableVariant'];
+  preorder?: ProductFragment['preorder'];
+  preorderShipDate?: ProductFragment['preorderShipDate'];
 }) {
   const navigate = useNavigate();
   const {open} = useAside();
+  const isPreorder = isVariantPreorder({
+    variant: selectedVariant,
+    preorderMetafieldValue: preorder?.value,
+  });
+  const isUnavailable = Boolean(
+    selectedVariant && !selectedVariant.availableForSale && !isPreorder,
+  );
+  const rawShipDate = preorderShipDate?.value;
+  const formattedShipDate = formatPreorderDate(rawShipDate);
   return (
     <div className="product-form">
       {productOptions.map((option) => {
@@ -101,25 +116,49 @@ export function ProductForm({
           </div>
         );
       })}
-      <AddToCartButton
-        disabled={!selectedVariant || !selectedVariant.availableForSale}
-        onClick={() => {
-          open('cart');
-        }}
-        lines={
-          selectedVariant
-            ? [
-                {
-                  merchandiseId: selectedVariant.id,
-                  quantity: 1,
-                  selectedVariant,
-                },
-              ]
-            : []
-        }
-      >
-        {selectedVariant?.availableForSale ? 'Add to cart' : 'Sold out'}
-      </AddToCartButton>
+      {isUnavailable && selectedVariant ? (
+        <BackInStockForm variantId={selectedVariant.id} />
+      ) : (
+        <>
+          <AddToCartButton
+            disabled={
+              !selectedVariant ||
+              (!selectedVariant.availableForSale && !isPreorder)
+            }
+            onClick={() => {
+              open('cart');
+            }}
+            lines={
+              selectedVariant
+                ? [
+                    {
+                      merchandiseId: selectedVariant.id,
+                      quantity: 1,
+                      selectedVariant,
+                      attributes: isPreorder
+                        ? [
+                            {key: '_preorder', value: 'true'},
+                            ...(rawShipDate
+                              ? [{key: 'preorder_ship_date', value: rawShipDate}]
+                              : []),
+                          ]
+                        : [],
+                    },
+                  ]
+                : []
+            }
+          >
+            {isPreorder
+              ? 'Pre-order'
+              : selectedVariant?.availableForSale
+                ? 'Add to cart'
+                : 'Sold out'}
+          </AddToCartButton>
+          {isPreorder && formattedShipDate ? (
+            <p className="preorder-note">Ships {formattedShipDate}</p>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
