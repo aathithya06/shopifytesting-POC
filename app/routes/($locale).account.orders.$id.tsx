@@ -6,6 +6,8 @@ import type {
   OrderQuery,
 } from 'customer-accountapi.generated';
 import {CUSTOMER_ORDER_QUERY} from '~/graphql/customer-account/CustomerOrderQuery';
+import {deriveOrderStatus} from '~/lib/orderStatus';
+import {OrderStatusTracker} from '~/components/OrderStatusTracker';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [{title: `Order ${data?.order?.name}`}];
@@ -64,12 +66,15 @@ export async function loader({params, context}: Route.LoaderArgs) {
         ).percentage
       : null;
 
+  const orderTracker = deriveOrderStatus(order);
+
   return {
     order,
     lineItems,
     discountValue,
     discountPercentage,
     fulfillmentStatus,
+    orderTracker,
   };
 }
 
@@ -80,6 +85,7 @@ export default function OrderRoute() {
     discountValue,
     discountPercentage,
     fulfillmentStatus,
+    orderTracker,
   } = useLoaderData<typeof loader>();
   return (
     <div className="account-order">
@@ -88,6 +94,8 @@ export default function OrderRoute() {
       {order.confirmationNumber && (
         <p>Confirmation: {order.confirmationNumber}</p>
       )}
+      <br />
+      <OrderStatusTracker tracker={orderTracker} />
       <br />
       <div>
         <table>

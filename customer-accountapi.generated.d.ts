@@ -223,6 +223,8 @@ export type OrderLineItemFullFragment = Pick<
       'altText' | 'height' | 'url' | 'id' | 'width'
     >
   >;
+  customAttributes: Array<Pick<CustomerAccountAPI.Attribute, 'key' | 'value'>>;
+  properties: Array<Pick<CustomerAccountAPI.Attribute, 'key' | 'value'>>;
 };
 
 export type OrderFragment = Pick<
@@ -232,9 +234,32 @@ export type OrderFragment = Pick<
   | 'confirmationNumber'
   | 'statusPageUrl'
   | 'fulfillmentStatus'
+  | 'financialStatus'
   | 'processedAt'
 > & {
-  fulfillments: {nodes: Array<Pick<CustomerAccountAPI.Fulfillment, 'status'>>};
+  fulfillments: {
+    nodes: Array<
+      Pick<
+        CustomerAccountAPI.Fulfillment,
+        'status' | 'latestShipmentStatus' | 'createdAt'
+      > & {
+        displayStatus: CustomerAccountAPI.Fulfillment['latestShipmentStatus'];
+      } & {
+        trackingInformation: Array<
+          Pick<
+            CustomerAccountAPI.TrackingInformation,
+            'company' | 'number' | 'url'
+          >
+        >;
+        trackingInfo: Array<
+          Pick<
+            CustomerAccountAPI.TrackingInformation,
+            'company' | 'number' | 'url'
+          >
+        >;
+      }
+    >;
+  };
   totalTax?: CustomerAccountAPI.Maybe<
     Pick<CustomerAccountAPI.MoneyV2, 'amount' | 'currencyCode'>
   >;
@@ -297,6 +322,10 @@ export type OrderFragment = Pick<
             'altText' | 'height' | 'url' | 'id' | 'width'
           >
         >;
+        customAttributes: Array<
+          Pick<CustomerAccountAPI.Attribute, 'key' | 'value'>
+        >;
+        properties: Array<Pick<CustomerAccountAPI.Attribute, 'key' | 'value'>>;
       }
     >;
   };
@@ -316,10 +345,31 @@ export type OrderQuery = {
       | 'confirmationNumber'
       | 'statusPageUrl'
       | 'fulfillmentStatus'
+      | 'financialStatus'
       | 'processedAt'
     > & {
       fulfillments: {
-        nodes: Array<Pick<CustomerAccountAPI.Fulfillment, 'status'>>;
+        nodes: Array<
+          Pick<
+            CustomerAccountAPI.Fulfillment,
+            'status' | 'latestShipmentStatus' | 'createdAt'
+          > & {
+            displayStatus: CustomerAccountAPI.Fulfillment['latestShipmentStatus'];
+          } & {
+            trackingInformation: Array<
+              Pick<
+                CustomerAccountAPI.TrackingInformation,
+                'company' | 'number' | 'url'
+              >
+            >;
+            trackingInfo: Array<
+              Pick<
+                CustomerAccountAPI.TrackingInformation,
+                'company' | 'number' | 'url'
+              >
+            >;
+          }
+        >;
       };
       totalTax?: CustomerAccountAPI.Maybe<
         Pick<CustomerAccountAPI.MoneyV2, 'amount' | 'currencyCode'>
@@ -382,6 +432,12 @@ export type OrderQuery = {
                 CustomerAccountAPI.Image,
                 'altText' | 'height' | 'url' | 'id' | 'width'
               >
+            >;
+            customAttributes: Array<
+              Pick<CustomerAccountAPI.Attribute, 'key' | 'value'>
+            >;
+            properties: Array<
+              Pick<CustomerAccountAPI.Attribute, 'key' | 'value'>
             >;
           }
         >;
@@ -508,7 +564,7 @@ interface GeneratedQueryTypes {
     return: CustomerDetailsQuery;
     variables: CustomerDetailsQueryVariables;
   };
-  '#graphql\n  fragment OrderMoney on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment DiscountApplication on DiscountApplication {\n    value {\n      __typename\n      ... on MoneyV2 {\n        ...OrderMoney\n      }\n      ... on PricingPercentageValue {\n        percentage\n      }\n    }\n  }\n  fragment OrderLineItemFull on LineItem {\n    id\n    title\n    quantity\n    price {\n      ...OrderMoney\n    }\n    discountAllocations {\n      allocatedAmount {\n        ...OrderMoney\n      }\n      discountApplication {\n        ...DiscountApplication\n      }\n    }\n    totalDiscount {\n      ...OrderMoney\n    }\n    image {\n      altText\n      height\n      url\n      id\n      width\n    }\n    variantTitle\n  }\n  fragment Order on Order {\n    id\n    name\n    confirmationNumber\n    statusPageUrl\n    fulfillmentStatus\n    processedAt\n    fulfillments(first: 1) {\n      nodes {\n        status\n      }\n    }\n    totalTax {\n      ...OrderMoney\n    }\n    totalPrice {\n      ...OrderMoney\n    }\n    subtotal {\n      ...OrderMoney\n    }\n    shippingAddress {\n      name\n      formatted(withName: true)\n      formattedArea\n    }\n    discountApplications(first: 100) {\n      nodes {\n        ...DiscountApplication\n      }\n    }\n    lineItems(first: 100) {\n      nodes {\n        ...OrderLineItemFull\n      }\n    }\n  }\n  query Order($orderId: ID!, $language: LanguageCode)\n    @inContext(language: $language) {\n    order(id: $orderId) {\n      ... on Order {\n        ...Order\n      }\n    }\n  }\n': {
+  '#graphql\n  fragment OrderMoney on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment DiscountApplication on DiscountApplication {\n    value {\n      __typename\n      ... on MoneyV2 {\n        ...OrderMoney\n      }\n      ... on PricingPercentageValue {\n        percentage\n      }\n    }\n  }\n  fragment OrderLineItemFull on LineItem {\n    id\n    title\n    quantity\n    price {\n      ...OrderMoney\n    }\n    discountAllocations {\n      allocatedAmount {\n        ...OrderMoney\n      }\n      discountApplication {\n        ...DiscountApplication\n      }\n    }\n    totalDiscount {\n      ...OrderMoney\n    }\n    image {\n      altText\n      height\n      url\n      id\n      width\n    }\n    variantTitle\n    customAttributes {\n      key\n      value\n    }\n    properties: customAttributes {\n      key\n      value\n    }\n  }\n  fragment Order on Order {\n    id\n    name\n    confirmationNumber\n    statusPageUrl\n    fulfillmentStatus\n    financialStatus\n    processedAt\n    fulfillments(first: 10) {\n      nodes {\n        status\n        latestShipmentStatus\n        displayStatus: latestShipmentStatus\n        createdAt\n        trackingInformation {\n          company\n          number\n          url\n        }\n        trackingInfo: trackingInformation {\n          company\n          number\n          url\n        }\n      }\n    }\n    totalTax {\n      ...OrderMoney\n    }\n    totalPrice {\n      ...OrderMoney\n    }\n    subtotal {\n      ...OrderMoney\n    }\n    shippingAddress {\n      name\n      formatted(withName: true)\n      formattedArea\n    }\n    discountApplications(first: 100) {\n      nodes {\n        ...DiscountApplication\n      }\n    }\n    lineItems(first: 100) {\n      nodes {\n        ...OrderLineItemFull\n      }\n    }\n  }\n  query Order($orderId: ID!, $language: LanguageCode)\n    @inContext(language: $language) {\n    order(id: $orderId) {\n      ... on Order {\n        ...Order\n      }\n    }\n  }\n': {
     return: OrderQuery;
     variables: OrderQueryVariables;
   };
