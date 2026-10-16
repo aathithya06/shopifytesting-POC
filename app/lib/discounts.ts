@@ -85,17 +85,31 @@ export function getCartDiscounts(cart: CartWithDiscounts): CartDiscount[] {
   const allocations = cart.discountAllocations;
   if (!allocations || allocations.length === 0) return [];
 
-  return allocations.map((allocation) => {
+  const grouped = new Map<string, CartDiscount>();
+
+  for (const allocation of allocations) {
+    const label = allocationLabel(allocation);
+    const amount = parseAmount(allocation.discountedAmount);
     const isCode =
       allocation.__typename === 'CartCodeDiscountAllocation' ||
       ('code' in allocation && !!allocation.code);
 
-    return {
-      label: allocationLabel(allocation),
-      amount: parseAmount(allocation.discountedAmount),
-      type: isCode ? 'code' : 'automatic',
-    };
-  });
+    const existing = grouped.get(label);
+    if (existing) {
+      existing.amount += amount;
+      if (isCode) {
+        existing.type = 'code';
+      }
+    } else {
+      grouped.set(label, {
+        label,
+        amount,
+        type: isCode ? 'code' : 'automatic',
+      });
+    }
+  }
+
+  return Array.from(grouped.values());
 }
 
 export function getTotalSavings(

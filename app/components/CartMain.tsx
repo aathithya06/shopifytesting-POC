@@ -1,11 +1,13 @@
-import {useOptimisticCart} from '@shopify/hydrogen';
-import {Link} from 'react-router';
-import type {CartApiQueryFragment} from 'storefrontapi.generated';
-import {useAside} from '~/components/Aside';
-import {CartLineItem, type CartLine} from '~/components/CartLineItem';
-import {CartRecommendations} from '~/components/CartRecommendations';
-import {FreeShippingBar} from '~/components/FreeShippingBar';
-import {CartSummary} from './CartSummary';
+import { useOptimisticCart } from '@shopify/hydrogen';
+import { Link } from 'react-router';
+import type { CartApiQueryFragment } from 'storefrontapi.generated';
+import { useAside } from '~/components/Aside';
+import { CartLineItem, type CartLine } from '~/components/CartLineItem';
+import { CartRecommendations } from '~/components/CartRecommendations';
+import { FreeShippingBar } from '~/components/FreeShippingBar';
+import { GiftCardAddOn } from '~/components/GiftCardAddOn';
+import { CartSummary } from './CartSummary';
+import { isPreorderCartLine } from '~/lib/preorder';
 
 export type CartLayout = 'page' | 'aside';
 
@@ -14,7 +16,7 @@ export type CartMainProps = {
   layout: CartLayout;
 };
 
-export type LineItemChildrenMap = {[parentId: string]: CartLine[]};
+export type LineItemChildrenMap = { [parentId: string]: CartLine[] };
 /** Returns a map of all line items and their children. */
 function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
   const children: LineItemChildrenMap = {};
@@ -49,7 +51,7 @@ export function CartDrawerHeading({
  * The main cart component that displays the cart items and summary.
  * It is used by both the /cart route and the cart aside dialog.
  */
-export function CartMain({layout, cart: originalCart}: CartMainProps) {
+export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   // The useOptimisticCart hook applies pending actions to the cart
   // so the user immediately sees feedback when they modify the cart.
   const cart = useOptimisticCart(originalCart);
@@ -88,9 +90,29 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                 );
               })}
             </ul>
-            {layout === 'aside' ? (
-              <CartRecommendations lines={cart?.lines?.nodes ?? []} />
-            ) : null}
+            {(() => {
+              const lines = cart?.lines?.nodes ?? [];
+              const hasPreorder = lines.some(isPreorderCartLine);
+              const hasInStock = lines.some((line) => !isPreorderCartLine(line));
+              if (hasPreorder && hasInStock) {
+                return (
+                  <div className="preorder-split-note" role="note">
+                    <span className="preorder-split-icon" aria-hidden="true">
+                      📦
+                    </span>
+                    <span>
+                      Your order contains pre-order items and may ship in parts.
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            <CartRecommendations
+              lines={cart?.lines?.nodes ?? []}
+              layout={layout}
+            />
+            <GiftCardAddOn cart={cart} />
           </div>
           <CartSummary cart={cart} layout={layout} />
         </div>
@@ -101,8 +123,8 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   );
 }
 
-function CartEmpty({layout}: {layout?: CartMainProps['layout']}) {
-  const {close} = useAside();
+function CartEmpty({ layout }: { layout?: CartMainProps['layout'] }) {
+  const { close } = useAside();
   return (
     <div className="cart-empty">
       <p>Your cart is empty</p>
