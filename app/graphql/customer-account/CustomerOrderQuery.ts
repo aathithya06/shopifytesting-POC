@@ -41,6 +41,14 @@ export const CUSTOMER_ORDER_QUERY = `#graphql
       width
     }
     variantTitle
+    customAttributes {
+      key
+      value
+    }
+    properties: customAttributes {
+      key
+      value
+    }
   }
   fragment Order on Order {
     id
@@ -48,10 +56,24 @@ export const CUSTOMER_ORDER_QUERY = `#graphql
     confirmationNumber
     statusPageUrl
     fulfillmentStatus
+    financialStatus
     processedAt
-    fulfillments(first: 1) {
+    fulfillments(first: 10) {
       nodes {
         status
+        latestShipmentStatus
+        displayStatus: latestShipmentStatus
+        createdAt
+        trackingInformation {
+          company
+          number
+          url
+        }
+        trackingInfo: trackingInformation {
+          company
+          number
+          url
+        }
       }
     }
     totalTax {
