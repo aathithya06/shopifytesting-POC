@@ -9,6 +9,7 @@ import {
   Scripts,
   ScrollRestoration,
   useRouteLoaderData,
+  useLoaderData,
 } from 'react-router';
 import type { Route } from './+types/root';
 import favicon from '~/assets/favicon.svg';
@@ -213,7 +214,9 @@ export function Layout({ children }: { children?: React.ReactNode }) {
 }
 
 export default function App() {
-  const data = useRouteLoaderData<RootLoader>('root');
+  const loaderData = useLoaderData<RootLoader>();
+  const routeData = useRouteLoaderData<RootLoader>('root');
+  const data = loaderData ?? routeData;
 
   if (!data) {
     return <Outlet />;

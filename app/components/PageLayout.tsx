@@ -1,4 +1,4 @@
-import {Await, Link} from 'react-router';
+import {Await, Link, useNavigation} from 'react-router';
 import {Suspense, useId} from 'react';
 import type {
   CartApiQueryFragment,
@@ -32,8 +32,14 @@ export function PageLayout({
   isLoggedIn,
   publicStoreDomain,
 }: PageLayoutProps) {
+  const navigation = useNavigation();
+  const isNavigating = navigation.state !== 'idle';
+
   return (
     <Aside.Provider>
+      {isNavigating && (
+        <div className="route-loading-indicator" aria-hidden="true" />
+      )}
       <CartAside cart={cart} />
       <SearchAside />
       <MobileMenuAside header={header} publicStoreDomain={publicStoreDomain} />
