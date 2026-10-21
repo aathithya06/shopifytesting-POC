@@ -126,9 +126,16 @@ async function loadShippingConfig(env: Env): Promise<ShippingConfig> {
 
   const endpoint = `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/${ADMIN_API_VERSION}/graphql.json`;
   let response: Response;
+  const timeoutCtrl = new AbortController();
+  const timer = setTimeout(() => {
+    console.error('[shipping-config] Admin shipping query exceeded 4s timeout');
+    timeoutCtrl.abort();
+  }, 4000);
+
   try {
     response = await fetch(endpoint, {
       method: 'POST',
+      signal: timeoutCtrl.signal,
       headers: {
         'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_ACCESS_TOKEN,
         'Content-Type': 'application/json',
@@ -141,6 +148,8 @@ async function loadShippingConfig(env: Env): Promise<ShippingConfig> {
       null,
       [],
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   const payload: unknown = await response.json().catch(() => null);
@@ -178,11 +187,18 @@ async function loadShippingConfig(env: Env): Promise<ShippingConfig> {
 async function loadTransitDays(
   env: Env,
 ): Promise<{minDays: number; maxDays: number} | null> {
+  const transitCtrl = new AbortController();
+  const timer = setTimeout(() => {
+    console.error('[shipping-config] Transit lookup exceeded 4s timeout');
+    transitCtrl.abort();
+  }, 4000);
+
   try {
     const response = await fetch(
       `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/unstable/graphql.json`,
       {
         method: 'POST',
+        signal: transitCtrl.signal,
         headers: {
           'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_ACCESS_TOKEN,
           'Content-Type': 'application/json',
@@ -196,6 +212,8 @@ async function loadTransitDays(
   } catch (error) {
     console.error('[shipping-config] transit time lookup failed', error);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

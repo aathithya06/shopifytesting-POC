@@ -14,6 +14,7 @@ import {
   SearchFormPredictive,
 } from '~/components/SearchFormPredictive';
 import {SearchResultsPredictive} from '~/components/SearchResultsPredictive';
+import {WishlistToastContainer} from '~/components/WishlistToast';
 
 interface PageLayoutProps {
   cart: Promise<CartApiQueryFragment | null>;
@@ -52,6 +53,7 @@ export function PageLayout({
         />
       )}
       <main>{children}</main>
+      <WishlistToastContainer />
       <Footer
         footer={footer}
         header={header}

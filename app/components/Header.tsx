@@ -7,6 +7,8 @@ import {
 } from '@shopify/hydrogen';
 import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
+import {useWishlist} from '~/lib/useWishlist';
+import {clearLocal} from '~/lib/wishlist';
 
 interface HeaderProps {
   header: HeaderQuery;
@@ -138,6 +140,7 @@ function HeaderCtas({
         </Await>
       </Suspense>
       <SearchToggle />
+      <WishlistToggle />
       <CartToggle cart={cart} />
     </nav>
   );
@@ -210,6 +213,13 @@ function AccountDropdown({greeting}: {greeting: string}) {
             method="POST"
             action="/account/logout"
             className="account-dropdown-logout-form"
+            onSubmit={() => {
+              clearLocal();
+              if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('wishlist:merged');
+                sessionStorage.setItem('wishlist:wasLoggedIn', 'true');
+              }
+            }}
           >
             <button
               type="submit"
@@ -222,6 +232,37 @@ function AccountDropdown({greeting}: {greeting: string}) {
         </div>
       )}
     </div>
+  );
+}
+
+function WishlistToggle() {
+  const {count} = useWishlist();
+
+  return (
+    <NavLink
+      prefetch="intent"
+      to="/wishlist"
+      className="header-wishlist-link reset"
+      aria-label={`Wishlist (${count} items)`}
+    >
+      <span className="header-wishlist-icon" aria-hidden="true">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill={count > 0 ? '#ec4899' : 'none'}
+          stroke={count > 0 ? '#ec4899' : 'currentColor'}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+        </svg>
+      </span>
+      <span className="wish-badge" aria-label={`${count} items in wishlist`}>
+        {count}
+      </span>
+    </NavLink>
   );
 }
 
