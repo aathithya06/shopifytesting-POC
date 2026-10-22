@@ -1,4 +1,4 @@
-import type {LoaderFunctionArgs} from 'react-router';
+import {Outlet, type LoaderFunctionArgs} from 'react-router';
 
 export async function loader({params, context}: LoaderFunctionArgs) {
   const {language, country} = context.storefront.i18n;
@@ -13,4 +13,8 @@ export async function loader({params, context}: LoaderFunctionArgs) {
   }
 
   return null;
+}
+
+export default function LocaleLayout() {
+  return <Outlet />;
 }

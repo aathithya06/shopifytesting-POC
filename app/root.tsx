@@ -9,6 +9,7 @@ import {
   Scripts,
   ScrollRestoration,
   useRouteLoaderData,
+  useLoaderData,
 } from 'react-router';
 import type { Route } from './+types/root';
 import favicon from '~/assets/favicon.svg';
@@ -18,41 +19,39 @@ import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
 import { PageLayout } from './components/PageLayout';
 import { fetchShippingConfig } from '~/lib/shipping-config.server';
+import { WishlistProvider } from '~/lib/useWishlist';
+import { withTimeout } from '~/lib/timeout';
 
 export type RootLoader = typeof loader;
 
 /**
- * This is important to avoid re-fetching root queries on sub-navigations
+ * Avoid re-fetching root queries on sub-navigations,
+ * especially on background wishlist actions and products resource queries.
  */
 export const shouldRevalidate: ShouldRevalidateFunction = ({
   formMethod,
   currentUrl,
   nextUrl,
+  formAction,
 }) => {
+  // Do not revalidate root loader on wishlist fetcher submissions or loads
+  if (
+    formAction?.includes('/api/wishlist') ||
+    formAction?.includes('/api/wishlist-products') ||
+    nextUrl.pathname.startsWith('/api/wishlist')
+  ) {
+    return false;
+  }
+
   // revalidate when a mutation is performed e.g add to cart, login...
   if (formMethod && formMethod !== 'GET') return true;
 
   // revalidate when manually revalidating via useRevalidator
   if (currentUrl.toString() === nextUrl.toString()) return true;
 
-  // Defaulting to no revalidation for root loader data to improve performance.
-  // When using this feature, you risk your UI getting out of sync with your server.
-  // Use with caution. If you are uncomfortable with this optimization, update the
-  // line below to `return defaultShouldRevalidate` instead.
-  // For more details see: https://remix.run/docs/en/main/route/should-revalidate
   return false;
 };
 
-/**
- * The main and reset stylesheets are added in the Layout component
- * to prevent a bug in development HMR updates.
- *
- * This avoids the "failed to execute 'insertBefore' on 'Node'" error
- * that occurs after editing and navigating to another page.
- *
- * It's a temporary fix until the issue is resolved.
- * https://github.com/remix-run/remix/issues/9242
- */
 export function links() {
   return [
     {
@@ -73,14 +72,12 @@ export async function loader(args: Route.LoaderArgs) {
 
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
-  const shippingConfig = await fetchShippingConfig(args.context.env);
 
   const { storefront, env } = args.context;
 
   return {
     ...deferredData,
     ...criticalData,
-    shippingConfig,
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
     shop: getShopAnalytics({
       storefront,
@@ -131,8 +128,7 @@ export const GIFT_CARD_QUERY = `#graphql
 ` as const;
 
 /**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
+ * Load data necessary for rendering content above the fold.
  */
 async function loadCriticalData({ context }: Route.LoaderArgs) {
   const { storefront } = context;
@@ -141,51 +137,61 @@ async function loadCriticalData({ context }: Route.LoaderArgs) {
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
-        headerMenuHandle: 'main-menu', // Adjust to your header menu handle
+        headerMenuHandle: 'main-menu',
       },
     }),
-    storefront
-      .query(GIFT_CARD_QUERY, {
+    withTimeout(
+      storefront.query(GIFT_CARD_QUERY, {
         cache: storefront.CacheLong(),
         variables: {
           handle: 'gift-card',
         },
-      })
-      .catch((error: Error) => {
-        console.error('Failed to load gift card product:', error);
-        return null;
       }),
+      4000,
+      'Storefront GIFT_CARD_QUERY',
+      null,
+    ).catch((error: Error) => {
+      console.error('Failed to load gift card product:', error);
+      return null;
+    }),
   ]);
 
   return { header, giftCardProduct: giftCardResult?.product ?? null };
 }
 
 /**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
+ * Load data for rendering content below the fold or deferred.
  */
 function loadDeferredData({ context }: Route.LoaderArgs) {
-  const { storefront, customerAccount, cart } = context;
+  const { storefront, customerAccount, cart, env } = context;
 
-  // defer the footer query (below the fold)
-  const footer = storefront
-    .query(FOOTER_QUERY, {
+  // Defer shipping config (calls Admin API) so root loader is cheap and non-blocking
+  const shippingConfig = fetchShippingConfig(env).catch((error: unknown) => {
+    console.error('[root] shipping config deferred load error:', error);
+    return null;
+  });
+
+  // defer the footer query (below the fold) with 4s timeout protection
+  const footer = withTimeout(
+    storefront.query(FOOTER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
-        footerMenuHandle: 'footer', // Adjust to your footer menu handle
+        footerMenuHandle: 'footer',
       },
-    })
-    .catch((error: Error) => {
-      // Log query errors, but don't throw them so the page can still render
-      console.error(error);
-      return null;
-    });
+    }),
+    4000,
+    'Storefront FOOTER_QUERY',
+    null,
+  ).catch((error: Error) => {
+    console.error(error);
+    return null;
+  });
 
   return {
     cart: cart.get(),
     isLoggedIn: customerAccount.isLoggedIn(),
     footer,
+    shippingConfig,
   };
 }
 
@@ -213,7 +219,9 @@ export function Layout({ children }: { children?: React.ReactNode }) {
 }
 
 export default function App() {
-  const data = useRouteLoaderData<RootLoader>('root');
+  const loaderData = useLoaderData<RootLoader>();
+  const routeData = useRouteLoaderData<RootLoader>('root');
+  const data = loaderData ?? routeData;
 
   if (!data) {
     return <Outlet />;
@@ -225,9 +233,11 @@ export default function App() {
       shop={data.shop}
       consent={data.consent}
     >
-      <PageLayout {...data}>
-        <Outlet />
-      </PageLayout>
+      <WishlistProvider isLoggedIn={data.isLoggedIn}>
+        <PageLayout {...data}>
+          <Outlet />
+        </PageLayout>
+      </WishlistProvider>
     </Analytics.Provider>
   );
 }
