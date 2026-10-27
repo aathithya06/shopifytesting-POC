@@ -12,6 +12,12 @@ export const ORDER_ITEM_FRAGMENT = `#graphql
         status
       }
     }
+    returns(first: 1) {
+      nodes {
+        id
+        status
+      }
+    }
     id
     number
     confirmationNumber

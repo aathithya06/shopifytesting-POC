@@ -23,6 +23,7 @@ import type {
   OrderItemFragment,
 } from 'customer-accountapi.generated';
 import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
+import {RETURN_STATUS_MAP} from '~/lib/returns';
 
 type OrdersLoaderData = {
   customer: CustomerOrdersFragment;
@@ -201,6 +202,11 @@ function OrderSearchForm({
 
 function OrderItem({order}: {order: OrderItemFragment}) {
   const fulfillmentStatus = flattenConnection(order.fulfillments)[0]?.status;
+  const latestReturn = order.returns?.nodes?.[0];
+  const returnStatusConfig = latestReturn
+    ? RETURN_STATUS_MAP[latestReturn.status]
+    : null;
+
   return (
     <>
       <fieldset>
@@ -213,6 +219,18 @@ function OrderItem({order}: {order: OrderItemFragment}) {
         )}
         <p>{order.financialStatus}</p>
         {fulfillmentStatus && <p>{fulfillmentStatus}</p>}
+        {latestReturn && (
+          <p>
+            <span
+              className={`return-badge return-badge--small ${
+                returnStatusConfig?.badgeClass || 'return-badge--neutral'
+              }`}
+            >
+              <span className="return-badge-dot" aria-hidden="true" />
+              Return: {returnStatusConfig?.label || latestReturn.status}
+            </span>
+          </p>
+        )}
         <Money data={order.totalPrice} />
         <Link to={`/account/orders/${btoa(order.id)}`}>View Order →</Link>
       </fieldset>
