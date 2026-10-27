@@ -11,6 +11,7 @@ import {
 import {ProductPrice} from '~/components/ProductPrice';
 import {ProductImage} from '~/components/ProductImage';
 import {ProductForm} from '~/components/ProductForm';
+import {WishlistButton} from '~/components/WishlistButton';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 import {isVariantPreorder} from '~/lib/preorder';
 
@@ -106,7 +107,15 @@ export default function Product() {
     <div className="product">
       <ProductImage image={selectedVariant?.image} />
       <div className="product-main">
-        <h1>{title}</h1>
+        <div className="product-title-row">
+          <h1>{title}</h1>
+          <WishlistButton
+            productId={product.id}
+            handle={product.handle}
+            className="wish-btn--pdp"
+            showLabel
+          />
+        </div>
         <div className="product-price-wrapper">
           <ProductPrice
             price={selectedVariant?.price}
